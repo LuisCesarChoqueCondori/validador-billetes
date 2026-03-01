@@ -28,13 +28,46 @@ async function procesarLoop() {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = 640; canvas.height = 480;
-    ctx.drawImage(video, 0, 0, 640, 480);
-
-    const { data: { text } } = await worker.recognize(canvas);
-    analizarTexto(text.replace(/\s/g, ''));
+    // 1. Aumentamos la resolución de captura para ver detalles
+    canvas.width = 1280;
+    canvas.height = 720;
     
-    setTimeout(procesarLoop, 1000); // Escaneo continuo cada segundo
+    // Dibujamos solo la zona central (donde está el cuadro verde)
+    // Esto evita que la IA se distraiga con el resto del billete
+    ctx.drawImage(video, 0, 0, 1280, 720);
+
+    // 2. FILTRO DE NITIDEZ (SHARPEN)
+    // Este filtro resalta los bordes de los números negros
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+    
+    // Aplicamos un umbral adaptativo (hace que el fondo sea blanco puro y el número negro puro)
+    for (let i = 0; i < data.length; i += 4) {
+        let grayscale = data[i] * 0.3 + data[i+1] * 0.59 + data[i+2] * 0.11;
+        let binarizado = (grayscale < 128) ? 0 : 255; // Ajusta este 128 según la luz
+        data[i] = data[i+1] = data[i+2] = binarizado;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    // 3. CONFIGURACIÓN MAESTRA DE TESSERACT
+    // Le decimos a la IA que NO busque palabras, sino solo un bloque de texto denso
+    const { data: { text } } = await worker.recognize(canvas, {
+        rotateAuto: true,
+        multiline: false,
+    });
+
+    // 4. LIMPIEZA AGRESIVA
+    // Filtramos todo lo que no sea número o las letras A/B
+    const limpio = text.toUpperCase().replace(/[^0-9AB]/g, '');
+    
+    // Buscamos el patrón: 8 números seguidos de una letra
+    const validMatch = limpio.match(/\d{8}[AB]/);
+    
+    if (validMatch) {
+        analizarTexto(validMatch[0]);
+    }
+    
+    setTimeout(procesarLoop, 500);
 }
 
 function analizarTexto(rawText) {
