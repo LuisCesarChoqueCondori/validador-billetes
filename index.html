@@ -5,11 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Validador de Billetes Bolivia</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="app-container">
         <h2>Verificador Serie B (Accidente El Alto)</h2>
         
+        <div class="camera-section">
+            <video id="video" autoplay playsinline></video>
+            <div id="scanner-overlay"></div>
+            <canvas id="canvas" style="display:none;"></canvas>
+        </div>
+
+        <button id="btn-camara" onclick="iniciarEscaneo()">📸 ACTIVAR CÁMARA</button>
+        <p id="status-ocr">Cámara apagada</p>
+
         <div class="input-group">
             <label>Corte del Billete:</label>
             <select id="corte">
@@ -20,11 +30,9 @@
         </div>
 
         <div class="input-group">
-            <label>Número de Serie (8 dígitos):</label>
-            <input type="number" id="nroSerie" placeholder="Ej: 67251000">
+            <label>Número de Serie detectado:</label>
+            <input type="number" id="nroSerie" placeholder="Esperando escaneo...">
         </div>
-
-        <button onclick="verificar()">VERIFICAR AHORA</button>
 
         <div id="resultado" class="resultado-box"></div>
     </div>
