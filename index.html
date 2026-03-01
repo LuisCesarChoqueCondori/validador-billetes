@@ -3,40 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validador de Billetes Bolivia</title>
+    <title>Scanner Billetes Bolivia</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <h2>Verificador Serie B (Accidente El Alto)</h2>
+        <h2>Escáner de Seguridad - Serie B</h2>
         
         <div class="camera-section">
             <video id="video" autoplay playsinline></video>
-            <div id="scanner-overlay"></div>
+            <div id="scanner-overlay">
+                <div class="guide-box"></div>
+            </div>
             <canvas id="canvas" style="display:none;"></canvas>
         </div>
 
-        <button id="btn-camara" onclick="iniciarEscaneo()">📸 ACTIVAR CÁMARA</button>
-        <p id="status-ocr">Cámara apagada</p>
-
-        <div class="input-group">
-            <label>Corte del Billete:</label>
-            <select id="corte">
-                <option value="10">Bs 10</option>
-                <option value="20">Bs 20</option>
-                <option value="50">Bs 50</option>
-            </select>
-        </div>
-
-        <div class="input-group">
-            <label>Número de Serie detectado:</label>
-            <input type="number" id="nroSerie" placeholder="Esperando escaneo...">
+        <div id="info-panel">
+            <p id="status-ocr">Iniciando sistema...</p>
+            <div class="data-display">
+                <span id="display-monto">Corte: --</span> | 
+                <span id="display-serie">Serie: --</span>
+            </div>
         </div>
 
         <div id="resultado" class="resultado-box"></div>
+        
+        <button id="btn-start" onclick="iniciarSistema()">📸 INICIAR ESCÁNER</button>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>

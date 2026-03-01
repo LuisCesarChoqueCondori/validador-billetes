@@ -1,84 +1,74 @@
-// BASE DE DATOS COMPLETA (Serie B - Sin valor legal)
 const SERIES_INVALIDAS = {
-    "10": [
-        {desde: 67250001, hasta: 67700000}, {desde: 69050001, hasta: 69500000},
-        {desde: 69500001, hasta: 69950000}, {desde: 69950001, hasta: 70400000},
-        {desde: 70400001, hasta: 70850000}, {desde: 70850001, hasta: 71300000},
-        {desde: 76310012, hasta: 85139995}, {desde: 86400001, hasta: 86850000},
-        {desde: 90900001, hasta: 91350000}, {desde: 91800001, hasta: 92250000}
-    ],
-    "20": [
-        {desde: 87280145, hasta: 91646549}, {desde: 96650001, hasta: 97100000},
-        {desde: 99800001, hasta: 100250000}, {desde: 100250001, hasta: 100700000},
-        {desde: 109250001, hasta: 109700000}, {desde: 110600001, hasta: 111050000},
-        {desde: 111050001, hasta: 111500000}, {desde: 111950001, hasta: 112400000},
-        {desde: 112400001, hasta: 112850000}, {desde: 112850001, hasta: 113300000},
-        {desde: 114200001, hasta: 114650000}, {desde: 114650001, hasta: 115100000},
-        {desde: 115100001, hasta: 115550000}, {desde: 118700001, hasta: 119150000},
-        {desde: 119150001, hasta: 119600000}, {desde: 120500001, hasta: 120950000}
-    ],
-    "50": [
-        {desde: 77100001, hasta: 77550000}, {desde: 78000001, hasta: 78450000},
-        {desde: 78900001, hasta: 96350000}, {desde: 96350001, hasta: 96800000},
-        {desde: 96800001, hasta: 97250000}, {desde: 98150001, hasta: 98600000},
-        {desde: 104900001, hasta: 105350000}, {desde: 105350001, hasta: 105800000},
-        {desde: 106700001, hasta: 107150000}, {desde: 107600001, hasta: 108050000},
-        {desde: 108050001, hasta: 108500000}, {desde: 109400001, hasta: 109850000}
-    ]
+    "10": [{desde: 67250001, hasta: 67700000}, {desde: 69050001, hasta: 71300000}, {desde: 76310012, hasta: 85139995}, {desde: 86400001, hasta: 92250000}],
+    "20": [{desde: 87280145, hasta: 91646549}, {desde: 96650001, hasta: 120950000}],
+    "50": [{desde: 77100001, hasta: 97250000}, {desde: 98150001, hasta: 109850000}]
 };
 
-let stream = null;
+let worker = null;
 
-async function iniciarEscaneo() {
-    const video = document.getElementById('video');
+async function iniciarSistema() {
     const status = document.getElementById('status-ocr');
-
     try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        status.innerText = "Buscando serie de 8 dígitos...";
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('video').srcObject = stream;
         
-        // Procesar un frame cada segundo
-        const interval = setInterval(async () => {
-            const num = await leerTexto();
-            if (num) {
-                document.getElementById('nroSerie').value = num;
-                validarBillete(num);
-            }
-        }, 1500);
-    } catch (err) {
-        alert("Error: Activa los permisos de cámara");
-    }
+        status.innerText = "Cargando IA...";
+        worker = await Tesseract.createWorker();
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+        await worker.setParameters({ tessedit_char_whitelist: '0123456789AB' });
+        
+        status.innerText = "Sistema Listo. Enfoque el billete.";
+        procesarLoop();
+    } catch (e) { alert("Error de cámara o permisos."); }
 }
 
-async function leerTexto() {
+async function procesarLoop() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
+    canvas.width = 640; canvas.height = 480;
+    ctx.drawImage(video, 0, 0, 640, 480);
 
-    const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-    const match = text.match(/\d{8}/); // Busca 8 números seguidos
-    return match ? match[0] : null;
+    const { data: { text } } = await worker.recognize(canvas);
+    analizarTexto(text.replace(/\s/g, ''));
+    
+    setTimeout(procesarLoop, 1000); // Escaneo continuo cada segundo
 }
 
-function validarBillete(numero) {
-    const corte = document.getElementById('corte').value;
-    const nro = parseInt(numero);
-    const resultadoDiv = document.getElementById('resultado');
-    const rangos = SERIES_INVALIDAS[corte];
+function analizarTexto(rawText) {
+    const status = document.getElementById('status-ocr');
+    const resDiv = document.getElementById('resultado');
+    
+    // 1. Detectar Monto (Buscamos 10, 20 o 50 grandes)
+    let monto = rawText.includes("50") ? "50" : rawText.includes("20") ? "20" : rawText.includes("10") ? "10" : null;
+    if(monto) document.getElementById('display-monto').innerText = `Corte: Bs ${monto}`;
 
-    const esInvalido = rangos.some(r => nro >= r.desde && nro <= r.hasta);
+    // 2. Detectar Serie (8 números + Letra)
+    const matchSerie = rawText.match(/(\d{8})([AB])/);
+    
+    if (matchSerie) {
+        const numero = parseInt(matchSerie[1]);
+        const letra = matchSerie[2];
+        document.getElementById('display-serie').innerText = `Serie: ${numero} ${letra}`;
 
-    resultadoDiv.style.display = "block";
-    if (esInvalido) {
-        resultadoDiv.innerText = "⚠️ ¡ALERTA! BILLETE SIN VALOR LEGAL";
-        resultadoDiv.className = "resultado-box alerta";
-    } else {
-        resultadoDiv.innerText = "✅ Billete aparentemente válido";
-        resultadoDiv.className = "resultado-box valido";
+        resDiv.style.display = "block";
+
+        if (letra === "A") {
+            resDiv.innerText = "✅ SERIE A: BILLETE SEGURO";
+            resDiv.className = "resultado-box valido";
+        } else if (letra === "B" && monto) {
+            const rangos = SERIES_INVALIDAS[monto];
+            const esRobado = rangos.some(r => numero >= r.desde && numero <= r.hasta);
+            
+            if (esRobado) {
+                resDiv.innerText = "⚠️ ¡ALERTA! SERIE B SIN VALOR LEGAL";
+                resDiv.className = "resultado-box alerta";
+            } else {
+                resDiv.innerText = "✅ SERIE B: FUERA DE RANGO DE ROBO";
+                resDiv.className = "resultado-box valido";
+            }
+        }
     }
 }
