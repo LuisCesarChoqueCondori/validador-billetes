@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de Billetes Bolivia</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <h2>Verificador Serie B (Accidente El Alto)</h2>
+        
+        <div class="input-group">
+            <label>Corte del Billete:</label>
+            <select id="corte">
+                <option value="10">Bs 10</option>
+                <option value="20">Bs 20</option>
+                <option value="50">Bs 50</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Número de Serie (8 dígitos):</label>
+            <input type="number" id="nroSerie" placeholder="Ej: 67251000">
+        </div>
+
+        <button onclick="verificar()">VERIFICAR AHORA</button>
+
+        <div id="resultado" class="resultado-box"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
